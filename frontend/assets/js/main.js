@@ -1,24 +1,66 @@
-// js/main.js
+// main.js - Optimized version
 
-document.addEventListener("DOMContentLoaded", function() {
+(function() {
+    'use strict';
+    
+    const CONFIG = {
+        API_URL: 'http://localhost:3000/api/chapters',
+        CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
+    };
+    
+    let chaptersCache = null;
+    let cacheTimestamp = null;
+    
+    // --- UTILITY FUNCTIONS ---
+    const debounce = (func, delay) => {
+        let timeoutId;
+        return function(...args) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => func.apply(this, args), delay);
+        };
+    };
+    
+    const showError = (container, message) => {
+        container.innerHTML = `
+            <div class="error-message" style="padding: 20px; text-align: center; color: #721c24; background: #f8d7da; border-radius: 8px; margin: 20px 0;">
+                <i class="fas fa-exclamation-circle"></i> ${message}
+            </div>
+        `;
+    };
+    
+    const showLoading = (container) => {
+        container.innerHTML = '<div class="loading" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i><p>Loading chapters...</p></div>';
+    };
     
     // --- ACCORDION LOGIC ---
-    // This function sets up the click events for the accordion headers
     function initializeAccordion() {
         const accordionHeaders = document.querySelectorAll(".accordion-header");
+        
         accordionHeaders.forEach(header => {
             header.addEventListener("click", function() {
+                const isActive = this.classList.contains("active");
+                
+                // Close all other accordions (optional: remove for multi-open)
+                document.querySelectorAll(".accordion-header.active").forEach(h => {
+                    if (h !== this) {
+                        h.classList.remove("active");
+                        h.nextElementSibling.style.maxHeight = null;
+                    }
+                });
+                
+                // Toggle current
                 this.classList.toggle("active");
                 const content = this.nextElementSibling;
-                if (content.style.maxHeight) {
+                
+                if (isActive) {
                     content.style.maxHeight = null;
                 } else {
                     content.style.maxHeight = content.scrollHeight + "px";
-                } 
+                }
             });
         });
     }
-
+    
     // --- DYNAMIC CHAPTER LOADING ---
     const accordionContainer = document.getElementById('chapter-accordion');
     const scriptTag = document.querySelector('script[data-class]');
@@ -29,60 +71,118 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     async function loadChaptersForClass(classNum) {
-        const API_URL = 'http://localhost:3000/api/chapters';
+        if (!classNum || !accordionContainer) return;
+        
+        showLoading(accordionContainer);
+        
         try {
-            const response = await fetch(API_URL);
-            const allChapters = await response.json();
-
-            // Filter chapters for the current class and group them by unit
-            const chaptersByUnit = allChapters
-                .filter(chapter => chapter.classNumber == classNum)
-                .reduce((acc, chapter) => {
-                    (acc[chapter.unitName] = acc[chapter.unitName] || []).push(chapter);
-                    return acc;
-                }, {});
-
-            accordionContainer.innerHTML = ''; // Clear the "Loading..." message
-
-            // Build the HTML for each unit accordion
-            for (const unitName in chaptersByUnit) {
-                const chapters = chaptersByUnit[unitName];
-                
-                const tableRows = chapters.map(chapter => `
-                    <div class="table-row">
-                        <span class="chapter-number">${chapter.chapterNumber}</span>
-                        <span class="chapter-name">${chapter.title}</span>
-                        <a href="${chapter.notesLink || '#'}" target="_blank" title="Notes" class="chapter-links-item"><i class="fas fa-file-pdf"></i></a>
-                        <a href="${chapter.questionsLink || '#'}" target="_blank" title="Questions" class="chapter-links-item"><i class="fas fa-circle-question"></i></a>
-                        <a href="${chapter.videoLink || '#'}" title="Video" class="chapter-links-item"><i class="fab fa-youtube"></i></a>
-                    </div>
-                `).join('');
-
-                const accordionItem = document.createElement('div');
-                accordionItem.className = 'accordion-item';
-                accordionItem.innerHTML = `
-                    <button class="accordion-header"><span>${unitName}</span><span class="arrow">▼</span></button>
-                    <div class="accordion-content">
-                        <div class="chapter-table">
-                            <div class="table-header">
-                                <span>#</span>
-                                <span>Module Name</span>
-                                <span>Notes</span>
-                                <span>Questions</span>
-                                <span>Video</span>
-                            </div>
-                            ${tableRows}
-                        </div>
-                    </div>
-                `;
-                accordionContainer.appendChild(accordionItem);
+            // Check cache first
+            const now = Date.now();
+            if (chaptersCache && cacheTimestamp && (now - cacheTimestamp) < CONFIG.CACHE_DURATION) {
+                renderChapters(chaptersCache, classNum);
+                return;
             }
-
-            initializeAccordion(); // Re-initialize accordion functionality for the new elements
-
+            
+            const response = await fetch(`${CONFIG.API_URL}?classNumber=${classNum}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            const allChapters = data.data || data; // Handle both response formats
+            
+            // Cache the results
+            chaptersCache = allChapters;
+            cacheTimestamp = now;
+            
+            renderChapters(allChapters, classNum);
+            
         } catch (error) {
             console.error('Failed to load chapters:', error);
-            accordionContainer.innerHTML = '<p>Error: Could not load chapters. Please ensure the backend server is running.</p>';
+            showError(accordionContainer, 'Could not load chapters. Please ensure the backend server is running and try again.');
         }
     }
-});
+    
+    function renderChapters(allChapters, classNum) {
+        // Filter and group chapters by unit
+        const chaptersByUnit = allChapters
+            .filter(chapter => chapter.classNumber == classNum)
+            .reduce((acc, chapter) => {
+                (acc[chapter.unitName] = acc[chapter.unitName] || []).push(chapter);
+                return acc;
+            }, {});
+        
+        if (Object.keys(chaptersByUnit).length === 0) {
+            showError(accordionContainer, `No chapters found for class ${classNum}.`);
+            return;
+        }
+        
+        // Create DocumentFragment for better performance
+        const fragment = document.createDocumentFragment();
+        
+        // Build the HTML for each unit accordion
+        Object.entries(chaptersByUnit).forEach(([unitName, chapters]) => {
+            const tableRows = chapters
+                .sort((a, b) => a.chapterNumber - b.chapterNumber)
+                .map(chapter => `
+                    <div class="table-row">
+                        <span class="chapter-number">${escapeHtml(chapter.chapterNumber.toString())}</span>
+                        <span class="chapter-name">${escapeHtml(chapter.title)}</span>
+                        <a href="${escapeHtml(chapter.notesLink || '#')}" 
+                           ${chapter.notesLink ? 'target="_blank" rel="noopener noreferrer"' : 'onclick="return false;"'} 
+                           title="${chapter.notesLink ? 'View Notes' : 'Notes not available'}" 
+                           class="chapter-links-item ${!chapter.notesLink ? 'disabled' : ''}">
+                            <i class="fas fa-file-pdf"></i>
+                        </a>
+                        <a href="${escapeHtml(chapter.questionsLink || '#')}" 
+                           ${chapter.questionsLink ? 'target="_blank" rel="noopener noreferrer"' : 'onclick="return false;"'} 
+                           title="${chapter.questionsLink ? 'View Questions' : 'Questions not available'}" 
+                           class="chapter-links-item ${!chapter.questionsLink ? 'disabled' : ''}">
+                            <i class="fas fa-circle-question"></i>
+                        </a>
+                        <a href="${escapeHtml(chapter.videoLink || '#')}" 
+                           ${chapter.videoLink ? 'target="_blank" rel="noopener noreferrer"' : 'onclick="return false;"'} 
+                           title="${chapter.videoLink ? 'Watch Video' : 'Video not available'}" 
+                           class="chapter-links-item ${!chapter.videoLink ? 'disabled' : ''}">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    </div>
+                `).join('');
+            
+            const accordionItem = document.createElement('div');
+            accordionItem.className = 'accordion-item';
+            accordionItem.innerHTML = `
+                <button class="accordion-header" aria-expanded="false">
+                    <span>${escapeHtml(unitName)}</span>
+                    <span class="arrow" aria-hidden="true">▼</span>
+                </button>
+                <div class="accordion-content">
+                    <div class="chapter-table">
+                        <div class="table-header">
+                            <span>#</span>
+                            <span>Module Name</span>
+                            <span>Notes</span>
+                            <span>Questions</span>
+                            <span>Video</span>
+                        </div>
+                        ${tableRows}
+                    </div>
+                </div>
+            `;
+            fragment.appendChild(accordionItem);
+        });
+        
+        accordionContainer.innerHTML = '';
+        accordionContainer.appendChild(fragment);
+        initializeAccordion();
+    }
+    
+    // Security: Escape HTML to prevent XSS
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+})();
