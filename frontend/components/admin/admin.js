@@ -99,13 +99,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- API FUNCTIONS ---
     async function loadChapters() {
         try {
+            console.log('Fetching chapters from:', API_URL);
             const response = await fetch(API_URL);
-            allChapters = await response.json();
+            console.log('Response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log('API Response:', result);
+            
+            // Handle both response formats: direct array or {success, data} object
+            allChapters = Array.isArray(result) ? result : (result.data || []);
+            console.log('Chapters loaded:', allChapters.length);
+            
             renderChapters(allChapters);
             updateStats(allChapters);
         } catch (error) {
             console.error('Error loading chapters:', error);
-            showNotification('Failed to load chapters', 'error');
+            showNotification('Failed to load chapters. Make sure the backend server is running on port 3000.', 'error');
         }
     }
 
@@ -238,7 +251,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.classList.contains('btn-edit')) {
             try {
                 const response = await fetch(`${API_URL}/${id}`);
-                const chapter = await response.json();
+                const result = await response.json();
+                // Handle response format: direct object or {success, data} object
+                const chapter = result.data || result;
                 
                 modalTitle.textContent = 'Edit Chapter';
                 document.getElementById('chapterId').value = chapter._id;
@@ -253,6 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 openModal();
             } catch (error) {
                 console.error('Error fetching chapter for edit:', error);
+                showNotification('Failed to load chapter data', 'error');
             }
         }
 

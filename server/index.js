@@ -47,6 +47,10 @@ app.get('/', (req, res) => {
     });
 });
 
+app.get('/test', (req, res) => {
+    res.json({ message: 'Server is working!', timestamp: new Date() });
+});
+
 app.use('/api/chapters', chapterRoutes);
 
 // 404 Handler
