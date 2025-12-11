@@ -1,6 +1,22 @@
-# Ignore backend dependencies and environment variables
+# Dependencies
+node_modules/
+server/node_modules/
 backend/node_modules/
+
+# Environment variables
+.env
+server/.env
 backend/.env
 
-# Ignore system files
+# System files
 .DS_Store
+**/.DS_Store
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Build files
+dist/
+build/

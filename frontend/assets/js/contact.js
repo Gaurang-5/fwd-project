@@ -29,19 +29,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // Simulate form submission
-            // In a real application, you would send this data to a server
-            showMessage('Sending your message...', 'info');
-
-            // Simulate server delay
+            // Create mailto link with pre-filled data
+            const recipient = 'support@bmsce.edu';
+            const categoryText = formData.category ? ` (${formData.category})` : '';
+            const emailSubject = encodeURIComponent(`${formData.subject}${categoryText}`);
+            const emailBody = encodeURIComponent(
+                `Name: ${formData.name}\n` +
+                `Email: ${formData.email}\n` +
+                `Category: ${formData.category || 'Not specified'}\n\n` +
+                `Message:\n${formData.message}`
+            );
+            
+            // Open user's email client with pre-filled data
+            window.location.href = `mailto:${recipient}?subject=${emailSubject}&body=${emailBody}`;
+            
+            // Show success message
+            showMessage('Opening your email client with the pre-filled message...', 'success');
+            
+            // Reset form after a short delay
             setTimeout(() => {
-                // Success message
-                showMessage('Thank you for your message! We\'ll get back to you soon.', 'success');
                 contactForm.reset();
-
-                // You can uncomment this to actually send data to a backend
-                // sendToBackend(formData);
-            }, 1500);
+            }, 1000);
         });
     }
 

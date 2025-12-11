@@ -185,4 +185,52 @@
         return div.innerHTML;
     }
     
+    // --- SYLLABUS LINK LOADING ---
+    function loadSyllabusLink() {
+        const syllabusBar = document.querySelector('.syllabus-bar');
+        if (!syllabusBar) {
+            console.log('Syllabus bar not found');
+            return;
+        }
+        
+        const scriptTag = document.querySelector('script[data-class]');
+        if (!scriptTag) {
+            console.log('Script tag with data-class not found');
+            return;
+        }
+        
+        const classNumber = scriptTag.getAttribute('data-class');
+        const cycle = classNumber === '9' ? 'chemistry' : 'physics';
+        const syllabusLink = localStorage.getItem(`syllabusLink-${cycle}`);
+        
+        console.log(`Class ${classNumber}, Cycle: ${cycle}, Link: ${syllabusLink}`);
+        
+        if (syllabusLink && syllabusLink.trim() !== '') {
+            syllabusBar.href = syllabusLink;
+            syllabusBar.target = '_blank';
+            syllabusBar.rel = 'noopener noreferrer';
+            syllabusBar.style.opacity = '1';
+            syllabusBar.style.cursor = 'pointer';
+            console.log('Syllabus link set to:', syllabusLink);
+        } else {
+            // If no link is set, disable or hide the button
+            syllabusBar.href = '#';
+            syllabusBar.style.opacity = '0.5';
+            syllabusBar.style.cursor = 'not-allowed';
+            syllabusBar.addEventListener('click', (e) => {
+                e.preventDefault();
+                alert('Syllabus PDF link has not been configured yet. Please contact the administrator.');
+            });
+            console.log('No syllabus link configured');
+        }
+    }
+    
+    // Load syllabus link on page load - use setTimeout to ensure DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadSyllabusLink);
+    } else {
+        // DOM is already loaded
+        loadSyllabusLink();
+    }
+    
 })();
