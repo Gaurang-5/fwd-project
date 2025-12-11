@@ -3,10 +3,12 @@ node_modules/
 server/node_modules/
 backend/node_modules/
 
-# Environment variables
+# Environment variables - CRITICAL: Never commit these!
 .env
 server/.env
 backend/.env
+*.env
+!*.env.example
 
 # System files
 .DS_Store

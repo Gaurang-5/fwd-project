@@ -126,9 +126,14 @@ fwd_project_in/
 
 ## Database Configuration
 
-MongoDB connection string is in `server/index.js`:
-```javascript
-mongodb+srv://Cluster84736:pmERM8HLwwpp0Lyd@cluster0.nmbmftx.mongodb.net/teacher-website
+1. Create a `server/.env` file based on `server/.env.example`
+2. Add your MongoDB connection string:
+```bash
+MONGODB_URI=your_mongodb_connection_string_here
+NODE_ENV=development
+ADMIN_USERNAME=teacher
+ADMIN_PASSWORD=pass123
+FRONTEND_URL=http://localhost:8000
 ```
 
 ## API Endpoints
