@@ -7,7 +7,7 @@
 
 **Project Name:** BMSCE Teacher Website - Educational Resource Management Platform  
 **Developer:** Gaurang Bhatia  
-**Purpose:** A full-stack web application for managing and delivering educational content to Class 9 and Class 10 students  
+**Purpose:** A full-stack web application for managing and delivering educational content First Year students  
 **Repository:** https://github.com/Gaurang-5/fwd-project  
 **Development Period:** 2025  
 
