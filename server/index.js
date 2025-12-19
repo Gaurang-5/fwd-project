@@ -35,6 +35,7 @@ const connectDB = async () => {
 
 // --- Routes ---
 const chapterRoutes = require('./routes/chapters');
+const syllabusRoutes = require('./routes/syllabus');
 
 app.get('/', (req, res) => {
     res.json({
@@ -42,7 +43,8 @@ app.get('/', (req, res) => {
         version: '1.0.0',
         status: 'running',
         endpoints: {
-            chapters: '/api/chapters'
+            chapters: '/api/chapters',
+            syllabus: '/api/syllabus'
         }
     });
 });
@@ -52,6 +54,7 @@ app.get('/test', (req, res) => {
 });
 
 app.use('/api/chapters', chapterRoutes);
+app.use('/api/syllabus', syllabusRoutes);
 
 // 404 Handler
 app.use((req, res) => {
