@@ -4,7 +4,7 @@ A modern, responsive website for managing and delivering educational content to 
 
 ## Features
 
-- **Student Resources**: Class 9 (Chemistry Cycle) and Class 10 (Physics Cycle) chapters with video lectures, notes, and question banks
+- **Student Resources**: (Chemistry Cycle) and (Physics Cycle) chapters with video lectures, notes, and question banks
 - **Admin Panel**: Complete CRUD operations for managing chapters and resources
 - **Unit Organization**: Chapters organized by syllabus units with collapsible sections
 - **Bulk Operations**: Select and delete multiple chapters at once
@@ -25,14 +25,16 @@ A modern, responsive website for managing and delivering educational content to 
 ### Start Everything with One Command
 
 ```bash
-./start-all.sh
+./dev.sh
 ```
 
 That's it! The script will:
-- ✅ Automatically install dependencies if needed
+- ✅ Automatically check and install dependencies
+- ✅ Create .env file if missing
 - ✅ Start the backend server (port 3000)
 - ✅ Start the frontend server (port 8000)
-- ✅ Show you all the URLs to access
+- ✅ Display beautiful UI with all URLs
+- ✅ Show admin credentials and API endpoints
 
 Press `Ctrl+C` to stop all servers.
 
@@ -42,16 +44,27 @@ Press `Ctrl+C` to stop all servers.
 # Terminal 1 - Backend
 cd server && npm start
 
-# Terminal 2 - Frontend
-cd frontend && python3 -m http.server 8000
+# Terminal 2 - Frontend (from project root)
+python3 -m http.server 8000
 ```
 
-### 3. Access the Website
+### Access the Website
 
+#### Student Pages
 - **Homepage**: http://localhost:8000/pages/index.html
-- **Admin Panel**: http://localhost:8000/components/admin/admin.html
 - **Class 9 (Chemistry)**: http://localhost:8000/pages/class9.html
 - **Class 10 (Physics)**: http://localhost:8000/pages/class10.html
+- **About**: http://localhost:8000/pages/about.html
+- **Contact**: http://localhost:8000/pages/contact.html
+- **Resources**: http://localhost:8000/pages/resources.html
+
+#### Admin Access
+- **Admin Panel**: http://localhost:8000/frontend/components/admin/admin.html
+
+#### API Endpoints
+- **Backend API**: http://localhost:3000
+- **Chapters API**: http://localhost:3000/api/chapters
+- **Syllabus API**: http://localhost:3000/api/syllabus
 
 ## Admin Login
 
@@ -61,7 +74,10 @@ cd frontend && python3 -m http.server 8000
 ## Project Structure
 
 ```
-fwd_project_in/
+fwd_project/
+├── dev.sh                           # Unified startup script with UI
+├── README.md                        # Project documentation
+├── PROJECT_PRESENTATION.md          # Complete project presentation
 ├── docs/
 │   ├── IMPORT_GUIDE.md              # Chapter import documentation
 │   └── chapters-import-template.json # Sample JSON format
@@ -84,17 +100,18 @@ fwd_project_in/
 │       ├── contact.html             # Contact page
 │       ├── resources.html           # Resources overview
 │       ├── class9.html              # Chemistry cycle chapters
-│       └── class10.html             # Physics cycle chapters
-├── server/
-│   ├── index.js                     # Express server
-│   ├── package.json                 # Node dependencies
-│   ├── models/
-│   │   └── Chapter.js               # MongoDB schema
-│   └── routes/
-│       └── chapters.js              # API endpoints
-├── start-all.sh                     # Start both servers
-├── start-frontend.sh                # Start frontend only
-└── README.md                        # This file
+│       ├── class10.html             # Physics cycle chapters
+│       └── chapter-detail.html      # Individual chapter view
+└── server/
+    ├── index.js                     # Express server
+    ├── package.json                 # Node dependencies
+    ├── .env                         # Environment variables (not in repo)
+    ├── models/
+    │   ├── Chapter.js               # Chapter MongoDB schema
+    │   └── Syllabus.js              # Syllabus MongoDB schema
+    └── routes/
+        ├── chapters.js              # Chapter API endpoints
+        └── syllabus.js              # Syllabus API endpoints
 ```
 
 ## Admin Panel Features
@@ -117,7 +134,8 @@ fwd_project_in/
 ### Syllabus Management
 - Upload PDF links for Chemistry and Physics cycle syllabi
 - Links automatically appear on student resource pages
-- Stored in browser localStorage
+- Stored in MongoDB database with class number, link, and academic year
+- Last updated timestamp tracking
 
 ### Statistics
 - View total chapters by class and subject
@@ -138,10 +156,19 @@ FRONTEND_URL=http://localhost:8000
 
 ## API Endpoints
 
-- `GET /api/chapters` - Get all chapters
+### Chapter API
+- `GET /api/chapters` - Get all chapters (with optional filters)
+- `GET /api/chapters/:id` - Get specific chapter by ID
 - `POST /api/chapters` - Create new chapter
-- `PUT /api/chapters/:id` - Update chapter
-- `DELETE /api/chapters/:id` - Delete chapter
+- `PUT /api/chapters/:id` - Update chapter by ID
+- `DELETE /api/chapters/:id` - Delete chapter by ID
+
+### Syllabus API
+- `GET /api/syllabus` - Get all syllabus records
+- `GET /api/syllabus/:classNumber` - Get syllabus for specific class (9 or 10)
+- `POST /api/syllabus` - Create or update syllabus
+- `PUT /api/syllabus/:classNumber` - Update syllabus for class
+- `DELETE /api/syllabus/:classNumber` - Delete syllabus for class
 
 ## Contributing
 
