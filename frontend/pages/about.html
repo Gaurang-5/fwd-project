@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="About BMSCE Studies Simplified - Learn about our mission to help students excel in SEE and CIE exams.">
     <title>About Us | BMSCE</title>
+    
+    <!-- Preload critical assets -->
+    <link rel="preload" href="../assets/css/style.css" as="style">
+    
+    <!-- DNS prefetch -->
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
@@ -18,15 +26,19 @@
     <header>
         <div class="container">
             <a href="index.html" class="logo">
-                <img src="../assets/images/my_logo.png" alt="Your Logo" class="header-logo">
+                <img src="../assets/images/my_logo.png" alt="Your Logo" class="header-logo" loading="lazy">
                 <span class="logo-text">| BMSCE</span>
             </a>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span class="hamburger"></span>
+            </button>
             <nav>
                 <ul>
                     <li><a href="index.html">Home</a></li>
                     <li><a href="resources.html">Resources</a></li>
                     <li><a href="about.html" class="active">About</a></li>
-                    <li><a href="contact.html" class="btn-highlight">Contact</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                    <li id="navAuth"></li>
                 </ul>
             </nav>
         </div>
@@ -111,7 +123,8 @@
         </div>
     </footer>
 
-    <script src="../assets/js/main.js"></script>
+    <script src="../assets/js/auth.js" defer></script>
+    <script src="../assets/js/main.js" defer></script>
 
 </body>
 </html>

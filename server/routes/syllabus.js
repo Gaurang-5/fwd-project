@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const Syllabus = require('../models/Syllabus');
+const { isAuthenticated } = require('../middleware/auth');
 
 // Validation middleware
 const validateSyllabus = (req, res, next) => {
@@ -23,7 +24,7 @@ const validateSyllabus = (req, res, next) => {
 };
 
 // GET: Fetch all syllabus records
-router.get('/', async (req, res) => {
+router.get('/', isAuthenticated, async (req, res) => {
     try {
         const syllabusRecords = await Syllabus.find().sort({ classNumber: 1 }).lean();
         
@@ -38,8 +39,8 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET: Fetch syllabus by class number
-router.get('/:classNumber', async (req, res) => {
+// GET: Fetch syllabus by class number (Protected)
+router.get('/:classNumber', isAuthenticated, async (req, res) => {
     try {
         const classNumber = parseInt(req.params.classNumber);
         

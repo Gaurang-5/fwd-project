@@ -4,6 +4,7 @@ const express = require('express');
 const router = express.Router();
 const Chapter = require('../models/Chapter');
 const mongoose = require('mongoose');
+const { isAuthenticated } = require('../middleware/auth');
 
 // Validation middleware
 const validateChapter = (req, res, next) => {
@@ -31,18 +32,28 @@ const validateObjectId = (req, res, next) => {
     next();
 };
 
-// GET: Fetch all chapters with optional filtering
-router.get('/', async (req, res) => {
+// GET: Fetch all chapters with optional filtering (Protected)
+router.get('/', isAuthenticated, async (req, res) => {
     try {
-        const { classNumber, unitName } = req.query;
+        const { classNumber, unitName, search } = req.query;
         const filter = {};
         
         if (classNumber) filter.classNumber = parseInt(classNumber);
         if (unitName) filter.unitName = unitName;
         
+        // Text search if search query provided
+        if (search) {
+            filter.$text = { $search: search };
+        }
+        
         const chapters = await Chapter.find(filter)
             .sort({ classNumber: 1, chapterNumber: 1 })
-            .lean();
+            .lean()
+            .exec(); // Explicit exec() for better performance
+        
+        // Add ETag for caching
+        const etag = `"chapters-${chapters.length}-${Date.now()}"`;
+        res.set('ETag', etag);
             
         res.json({
             success: true,
@@ -80,8 +91,8 @@ router.post('/', validateChapter, async (req, res) => {
     }
 });
 
-// GET: Fetch a single chapter by ID
-router.get('/:id', validateObjectId, async (req, res) => {
+// GET: Fetch a single chapter by ID (Protected)
+router.get('/:id', isAuthenticated, validateObjectId, async (req, res) => {
     try {
         const chapter = await Chapter.findById(req.params.id).lean();
         

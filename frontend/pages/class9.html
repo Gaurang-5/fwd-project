@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BMSCE | Studies Simplified</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="BMSCE Chemistry Cycle - Access notes, questions, and videos for all chemistry topics.">
+    <title>BMSCE | Chemistry Cycle</title>
+    
+    <!-- Preload critical assets -->
+    <link rel="preload" href="../assets/css/style.css" as="style">
+    
+    <!-- DNS prefetch -->
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
@@ -13,20 +21,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&family=Roboto+Slab:wght@700&display=swap" rel="stylesheet">
 </head>
-<body>
+<body data-requires-auth="true">
 
     <header>
         <div class="container">
             <a href="index.html" class="logo">
-                <img src="../assets/images/my_logo.png" alt="Your Logo" class="header-logo">
+                <img src="../assets/images/my_logo.png" alt="Your Logo" class="header-logo" loading="lazy">
                 <span class="logo-text">| BMSCE</span>
             </a>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span class="hamburger"></span>
+            </button>
             <nav>
                 <ul>
                     <li><a href="index.html">Home</a></li>
                     <li><a href="resources.html" class="active">Resources</a></li>
                     <li><a href="about.html">About</a></li>
-                    <li><a href="contact.html" class="btn-highlight">Contact</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                    <li id="navAuth"></li>
                 </ul>
             </nav>
         </div>
@@ -62,7 +74,8 @@
         </div>
     </footer>
 
-    <script src="../assets/js/main.js" data-class="9"></script>
+    <script src="../assets/js/auth.js" defer></script>
+    <script src="../assets/js/main.js" data-class="9" defer></script>
 
 </body>
 </html>

@@ -1,26 +1,40 @@
 # BMSCE Teacher Website
 
-A modern, responsive website for managing and delivering educational content to students at BMSCE.
+A modern, responsive educational platform for BMSCE students with Google OAuth authentication.
 
-## Features
+## ✨ Features
 
-- **Student Resources**: (Chemistry Cycle) and (Physics Cycle) chapters with video lectures, notes, and question banks
-- **Admin Panel**: Complete CRUD operations for managing chapters and resources
-- **Unit Organization**: Chapters organized by syllabus units with collapsible sections
-- **Bulk Operations**: Select and delete multiple chapters at once
-- **Import/Export**: JSON-based chapter import/export functionality
-- **Syllabus Management**: Upload and manage syllabus PDF links for each cycle
-- **Contact Form**: Direct email integration for student inquiries
-- **Responsive Design**: Mobile-friendly interface with modern UI
+### 🔐 Student Authentication
+- **Google OAuth Integration**: Students log in with their BMSCE Gmail (@bmsce.ac.in)
+- **Domain Restriction**: Only verified BMSCE students can access
+- **Secure Sessions**: Industry-standard session management
 
-## Tech Stack
+### 📚 Educational Content
+- **Student Resources**: Chemistry Cycle and Physics Cycle chapters
+- **Video Lectures**: Curated YouTube tutorials
+- **Study Materials**: Notes and question banks
+- **Unit Organization**: Chapters organized by syllabus units
+
+### 👨‍💼 Admin Panel
+- **Complete CRUD Operations**: Manage chapters and resources
+- **Bulk Operations**: Select and delete multiple chapters
+- **Import/Export**: JSON-based chapter management
+- **Syllabus Management**: Upload and manage syllabus PDFs
+
+### 🎨 Modern UI
+- **Responsive Design**: Mobile-friendly interface
+- **Beautiful Animations**: Smooth transitions and effects
+- **Contact Form**: Direct email integration
+
+## 🚀 Tech Stack
 
 - **Frontend**: HTML5, CSS3, Vanilla JavaScript, Particles.js
-- **Backend**: Node.js, Express.js, Mongoose
+- **Backend**: Node.js, Express.js, Passport.js
 - **Database**: MongoDB Atlas
-- **Server**: Python HTTP Server (Frontend), Node.js (Backend API)
+- **Authentication**: Google OAuth 2.0
+- **Session**: Express-session with secure cookies
 
-## Quick Start
+## ⚡ Quick Start
 
 ### Start Everything with One Command
 
@@ -28,25 +42,30 @@ A modern, responsive website for managing and delivering educational content to 
 ./dev.sh
 ```
 
-That's it! The script will:
-- ✅ Automatically check and install dependencies
-- ✅ Create .env file if missing
-- ✅ Start the backend server (port 3000)
-- ✅ Start the frontend server (port 8000)
-- ✅ Display beautiful UI with all URLs
-- ✅ Show admin credentials and API endpoints
+**That's it!** The script will:
+- ✅ Check and install dependencies
+- ✅ Create `.env` file if missing
+- ✅ Start backend server (port 3000)
+- ✅ Start frontend server (port 8000)
+- ✅ Display all URLs and credentials
 
 Press `Ctrl+C` to stop all servers.
 
-### Manual Start (Optional)
+### First Time Setup
 
-```bash
-# Terminal 1 - Backend
-cd server && npm start
+1. **Get Google OAuth credentials** (required for login):
+   - See [docs/GOOGLE_OAUTH_SETUP.md](docs/GOOGLE_OAUTH_SETUP.md)
+   - Update `server/.env` with your credentials
 
-# Terminal 2 - Frontend (from project root)
-python3 -m http.server 8000
-```
+2. **Run the project**:
+   ```bash
+   ./dev.sh
+   ```
+
+3. **Access the portal**:
+   - Homepage: http://localhost:8000/frontend/pages/index.html
+   - Student Login: http://localhost:8000/frontend/pages/login.html
+   - Admin Panel: http://localhost:8000/frontend/components/admin/admin.html
 
 ### Access the Website
 

@@ -4,13 +4,138 @@ const API_URL = 'http://localhost:3000/api/chapters';
 const ADMIN_USERNAME = "teacher";
 const ADMIN_PASSWORD = "pass123";
 
+// ========== SECURITY & CONFIGURATION ==========
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_TIME = 5 * 60 * 1000; // 5 minutes
+const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for API cache
+
+let loginAttempts = 0;
+let lockoutUntil = null;
+let lastActivityTime = Date.now();
+let sessionTimeoutId = null;
 let allChapters = [];
 let selectedChapters = new Set();
 let currentSort = { field: null, order: 'asc' };
 
+// ========== API CACHE ==========
+const apiCache = new Map();
+
+function getCachedData(key) {
+    const cached = apiCache.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+    }
+    return null;
+}
+
+function setCachedData(key, data) {
+    apiCache.set(key, { data, timestamp: Date.now() });
+}
+
+function clearCache(key) {
+    if (key) {
+        apiCache.delete(key);
+    } else {
+        apiCache.clear();
+    }
+}
+
+// ========== ENHANCED FETCH WITH RETRY & OFFLINE DETECTION ==========
+let isOnline = navigator.onLine;
+
+window.addEventListener('online', () => {
+    isOnline = true;
+    showNotification('Connection restored! ✓', 'success');
+    hideOfflineOverlay();
+});
+
+window.addEventListener('offline', () => {
+    isOnline = false;
+    showNotification('You are offline. Some features may not work.', 'error');
+    showOfflineOverlay();
+});
+
+async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
+    if (!isOnline) {
+        throw new Error('No internet connection. Please check your network.');
+    }
+    
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await fetch(url, {
+                ...options,
+                credentials: 'include'
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Server error: ${response.status}`);
+            }
+            
+            return response;
+        } catch (error) {
+            if (i === retries - 1) {
+                // Last attempt failed
+                if (error.message.includes('Failed to fetch')) {
+                    throw new Error('Cannot connect to server. Please ensure the backend is running.');
+                }
+                throw error;
+            }
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+        }
+    }
+}
+
+function showOfflineOverlay() {
+    let overlay = document.getElementById('offline-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'offline-overlay';
+        overlay.innerHTML = `
+            <div class="offline-content">
+                <i class="fas fa-wifi" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                <h3>You're Offline</h3>
+                <p>Please check your internet connection</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+}
+
+function hideOfflineOverlay() {
+    const overlay = document.getElementById('offline-overlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    checkExistingSession();
     initializeApp();
 });
+
+function checkExistingSession() {
+    const isLoggedIn = sessionStorage.getItem('adminLoggedIn');
+    const sessionStart = sessionStorage.getItem('sessionStart');
+    
+    // Check if session has expired
+    if (isLoggedIn === 'true' && sessionStart) {
+        const elapsed = Date.now() - parseInt(sessionStart);
+        if (elapsed > SESSION_TIMEOUT) {
+            sessionStorage.removeItem('adminLoggedIn');
+            sessionStorage.removeItem('sessionStart');
+            showNotification('Session expired. Please login again.', 'error');
+            return;
+        }
+    }
+    
+    if (isLoggedIn === 'true') {
+        showAdminPanel();
+    }
+}
 
 function initializeApp() {
     setupLoginHandlers();
@@ -20,6 +145,75 @@ function initializeApp() {
     setupBulkActions();
     setupExportImport();
     setupSorting();
+    setupActivityMonitor();
+    setupMobileMenu();
+}
+
+// ========== MOBILE MENU ==========
+function setupMobileMenu() {
+    const toggle = document.querySelector('.mobile-menu-toggle');
+    const nav = document.querySelector('header nav');
+    
+    if (!toggle || !nav) return;
+    
+    // Create overlay
+    let overlay = document.querySelector('.mobile-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'mobile-overlay';
+        document.body.appendChild(overlay);
+    }
+    
+    // Toggle menu
+    toggle.addEventListener('click', () => {
+        toggle.classList.toggle('active');
+        nav.classList.toggle('active');
+        overlay.classList.toggle('active');
+        document.body.style.overflow = nav.classList.contains('active') ? 'hidden' : '';
+    });
+    
+    // Close menu when clicking overlay
+    overlay.addEventListener('click', () => {
+        toggle.classList.remove('active');
+        nav.classList.remove('active');
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    });
+    
+    // Close menu when clicking a link
+    nav.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+            toggle.classList.remove('active');
+            nav.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        });
+    });
+}
+
+// ========== ACTIVITY MONITOR FOR SESSION TIMEOUT ==========
+function setupActivityMonitor() {
+    const resetActivity = () => {
+        lastActivityTime = Date.now();
+        resetSessionTimeout();
+    };
+    
+    ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(event => {
+        document.addEventListener(event, resetActivity, { passive: true });
+    });
+}
+
+function resetSessionTimeout() {
+    if (sessionTimeoutId) {
+        clearTimeout(sessionTimeoutId);
+    }
+    
+    if (sessionStorage.getItem('adminLoggedIn') === 'true') {
+        sessionTimeoutId = setTimeout(() => {
+            handleLogout();
+            showNotification('Session expired due to inactivity.', 'error');
+        }, SESSION_TIMEOUT);
+    }
 }
 
 // ========== LOGIN ==========
@@ -37,42 +231,116 @@ function handleLogin() {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value.trim();
     
+    // Check for lockout
+    if (lockoutUntil && Date.now() < lockoutUntil) {
+        const remainingTime = Math.ceil((lockoutUntil - Date.now()) / 1000);
+        showNotification(`Too many failed attempts. Try again in ${remainingTime} seconds.`, 'error');
+        return;
+    }
+    
     if (!username || !password) {
         showNotification('Please enter both username and password', 'error');
         return;
     }
     
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-        document.getElementById('password-prompt').style.display = 'none';
-        document.querySelector('#particles-js').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
-        document.body.className = 'admin-dashboard-page';
+        // Reset login attempts on success
+        loginAttempts = 0;
+        lockoutUntil = null;
+        
+        sessionStorage.setItem('adminLoggedIn', 'true');
+        sessionStorage.setItem('sessionStart', Date.now().toString());
+        showAdminPanel();
         showNotification('Welcome to Admin Panel!', 'success');
-        loadChapters();
-        loadSyllabusLinks();
     } else {
-        showNotification('Incorrect username or password!', 'error');
+        // Increment failed attempts
+        loginAttempts++;
+        const remaining = MAX_LOGIN_ATTEMPTS - loginAttempts;
+        
+        if (remaining <= 0) {
+            lockoutUntil = Date.now() + LOCKOUT_TIME;
+            loginAttempts = 0;
+            showNotification(`Account locked for 5 minutes due to too many failed attempts.`, 'error');
+        } else if (remaining <= 2) {
+            showNotification(`Incorrect credentials! ${remaining} attempt${remaining > 1 ? 's' : ''} remaining.`, 'error');
+        } else {
+            showNotification('Incorrect username or password!', 'error');
+        }
     }
 }
 
+function showAdminPanel() {
+    document.getElementById('password-prompt').style.display = 'none';
+    document.querySelector('#particles-js').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+    document.body.className = 'admin-dashboard-page';
+    
+    // Start session timeout
+    resetSessionTimeout();
+    
+    loadChapters();
+    loadSyllabusLinks();
+    setupTabSwitching();
+    setupLogoutHandler();
+}
+
+function setupLogoutHandler() {
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+}
+
+function handleLogout() {
+    // Clear session timeout
+    if (sessionTimeoutId) {
+        clearTimeout(sessionTimeoutId);
+    }
+    
+    sessionStorage.removeItem('adminLoggedIn');
+    sessionStorage.removeItem('sessionStart');
+    clearCache(); // Clear API cache on logout
+    
+    document.getElementById('main-content').style.display = 'none';
+    document.getElementById('password-prompt').style.display = 'flex';
+    document.querySelector('#particles-js').style.display = 'block';
+    document.body.className = 'admin-login-page';
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+    showNotification('Logged out successfully', 'success');
+}
+
 // ========== LOAD & RENDER CHAPTERS ==========
-async function loadChapters() {
+async function loadChapters(useCache = false) {
     try {
+        // Check cache first
+        if (useCache) {
+            const cached = getCachedData('chapters');
+            if (cached) {
+                allChapters = cached;
+                renderChapters(allChapters);
+                updateStats(allChapters);
+                return;
+            }
+        }
+        
         console.log('Loading chapters from:', API_URL);
         showLoading(true);
-        const response = await fetch(API_URL);
-        console.log('Response status:', response.status);
+        
+        const response = await fetchWithRetry(API_URL);
         const data = await response.json();
         console.log('Data received:', data);
         
         allChapters = data.data || data || [];
+        setCachedData('chapters', allChapters); // Cache the data
+        
         console.log('All chapters:', allChapters.length);
         renderChapters(allChapters);
         updateStats(allChapters);
         showLoading(false);
     } catch (error) {
         console.error('Error loading chapters:', error);
-        showNotification('Failed to load chapters. Make sure backend server is running.', 'error');
+        showNotification(error.message || 'Failed to load chapters. Make sure backend server is running.', 'error');
         showLoading(false);
     }
 }
@@ -337,6 +605,7 @@ function setupFormHandlers() {
             const response = await fetch(isEditing ? `${API_URL}/${id}` : API_URL, {
                 method: isEditing ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify(chapterData)
             });
             
@@ -386,7 +655,9 @@ function validateForm() {
 // ========== CRUD OPERATIONS ==========
 window.editChapter = async function(id) {
     try {
-        const response = await fetch(`${API_URL}/${id}`);
+        const response = await fetch(`${API_URL}/${id}`, {
+            credentials: 'include'
+        });
         const result = await response.json();
         const chapter = result.data || result;
         
@@ -417,18 +688,15 @@ window.deleteChapter = async function(id) {
     if (!confirmed) return;
     
     try {
-        const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+        await fetchWithRetry(`${API_URL}/${id}`, { method: 'DELETE' });
         
-        if (response.ok) {
-            await showSuccessAnimation('Chapter Deleted', 'The chapter has been successfully removed.');
-            selectedChapters.delete(id);
-            loadChapters();
-        } else {
-            showNotification('Failed to delete chapter', 'error');
-        }
+        clearCache('chapters'); // Clear chapters cache
+        await showSuccessAnimation('Chapter Deleted', 'The chapter has been successfully removed.');
+        selectedChapters.delete(id);
+        loadChapters();
     } catch (error) {
         console.error('Error deleting:', error);
-        showNotification('Error deleting chapter', 'error');
+        showNotification(error.message || 'Error deleting chapter', 'error');
     }
 };
 
@@ -479,11 +747,18 @@ window.previewChapter = function(id) {
 };
 
 // ========== SEARCH & FILTER ==========
+let searchDebounceTimer = null;
+
 function setupSearchAndFilter() {
     const searchInput = document.getElementById('search-input');
     const classFilter = document.getElementById('class-filter');
     
-    searchInput?.addEventListener('input', filterChapters);
+    // Debounced search for better performance
+    searchInput?.addEventListener('input', () => {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(filterChapters, 300);
+    });
+    
     classFilter?.addEventListener('change', filterChapters);
 }
 
@@ -583,24 +858,84 @@ async function bulkDelete() {
     if (!confirmed) return;
     
     try {
-        showLoading(true);
-        const deletePromises = Array.from(selectedChapters).map(id =>
-            fetch(`${API_URL}/${id}`, { method: 'DELETE' })
-        );
+        const chapterIds = Array.from(selectedChapters);
+        let completed = 0;
+        let failed = 0;
         
-        await Promise.all(deletePromises);
+        // Show progress overlay
+        showProgressOverlay('Deleting Chapters...', 0, count);
         
+        for (const id of chapterIds) {
+            try {
+                await fetchWithRetry(`${API_URL}/${id}`, { method: 'DELETE' });
+                completed++;
+            } catch (error) {
+                failed++;
+                console.error(`Failed to delete chapter ${id}:`, error);
+            }
+            updateProgressOverlay(completed + failed, count);
+        }
+        
+        hideProgressOverlay();
         selectedChapters.clear();
-        showLoading(false);
-        await showSuccessAnimation(
-            'Chapters Deleted!',
-            `${count} chapter${count > 1 ? 's have' : ' has'} been successfully removed.`
-        );
+        clearCache('chapters'); // Clear chapters cache
+        
+        if (failed > 0) {
+            showNotification(`Deleted ${completed} chapter(s). ${failed} failed.`, 'warning');
+        } else {
+            await showSuccessAnimation(
+                'Chapters Deleted!',
+                `${count} chapter${count > 1 ? 's have' : ' has'} been successfully removed.`
+            );
+        }
         loadChapters();
     } catch (error) {
         console.error('Error bulk deleting:', error);
-        showNotification('Error deleting chapters', 'error');
-        showLoading(false);
+        hideProgressOverlay();
+        showNotification(error.message || 'Error deleting chapters', 'error');
+    }
+}
+
+// ========== PROGRESS OVERLAY ==========
+function showProgressOverlay(title, current, total) {
+    let overlay = document.getElementById('progress-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'progress-overlay';
+        overlay.innerHTML = `
+            <div class="progress-content">
+                <h3 id="progress-title">${title}</h3>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <p id="progress-text">${current} / ${total}</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    } else {
+        overlay.querySelector('#progress-title').textContent = title;
+        overlay.querySelector('#progress-text').textContent = `${current} / ${total}`;
+        overlay.querySelector('#progress-bar').style.width = `${(current / total) * 100}%`;
+    }
+    overlay.style.display = 'flex';
+}
+
+function updateProgressOverlay(current, total) {
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    
+    if (progressBar) {
+        progressBar.style.width = `${(current / total) * 100}%`;
+    }
+    if (progressText) {
+        progressText.textContent = `${current} / ${total}`;
+    }
+}
+
+function hideProgressOverlay() {
+    const overlay = document.getElementById('progress-overlay');
+    if (overlay) {
+        overlay.style.display = 'none';
     }
 }
 
@@ -658,6 +993,7 @@ async function importChapters(e) {
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify(chapter)
                 });
                 if (response.ok) imported++;
@@ -885,6 +1221,7 @@ window.addAllVideos = async function() {
                 fetch(`${API_URL}/${chapter._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify(chapter)
                 })
             );
@@ -922,6 +1259,7 @@ window.addAllNotes = async function() {
                 fetch(`${API_URL}/${chapter._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify(chapter)
                 })
             );
@@ -1067,6 +1405,7 @@ window.saveNewOrder = async function() {
                 fetch(`${API_URL}/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify(chapter)
                 })
             );
@@ -1203,3 +1542,193 @@ function updateSyllabusPreview(cycle, url) {
     }
 }
 
+// ========== ANALYTICS TAB FUNCTIONALITY ==========
+
+const ANALYTICS_API_URL = 'http://localhost:3000/api/analytics';
+let currentPageAnalytics = 1;
+let currentSortAnalytics = 'lastLogin-desc';
+
+// Tab Switching - Setup function called after login
+function setupTabSwitching() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetTab = btn.dataset.tab;
+            
+            // Remove active class from all tabs and contents
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding content
+            btn.classList.add('active');
+            document.getElementById(`${targetTab}-tab`).classList.add('active');
+            
+            // Load analytics data when analytics tab is opened
+            if (targetTab === 'analytics') {
+                loadAnalyticsData();
+            }
+        });
+    });
+    
+    // Setup analytics controls
+    setupAnalyticsControls();
+}
+
+function setupAnalyticsControls() {
+    const searchInput = document.getElementById('user-search-input');
+    const sortFilter = document.getElementById('user-sort-filter');
+    const refreshBtn = document.getElementById('refresh-analytics-btn');
+    
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentPageAnalytics = 1;
+                loadUsersList(1, e.target.value, currentSortAnalytics);
+            }, 500);
+        });
+    }
+    
+    if (sortFilter) {
+        sortFilter.addEventListener('change', (e) => {
+            currentSortAnalytics = e.target.value;
+            currentPageAnalytics = 1;
+            const searchValue = document.getElementById('user-search-input').value;
+            loadUsersList(1, searchValue, currentSortAnalytics);
+        });
+    }
+    
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            loadAnalyticsData();
+            showNotification('Analytics data refreshed', 'success');
+        });
+    }
+}
+
+// Load Analytics Overview
+async function loadAnalyticsData() {
+    try {
+        const response = await fetch(`${ANALYTICS_API_URL}/overview`);
+        const data = await response.json();
+        
+        if (data.success) {
+            updateAnalyticsStats(data.data);
+        }
+        
+        // Load users list
+        loadUsersList();
+    } catch (error) {
+        console.error('Error loading analytics:', error);
+        showNotification('Failed to load analytics data', 'error');
+    }
+}
+
+function updateAnalyticsStats(data) {
+    document.getElementById('total-users-count').textContent = data.totalUsers;
+    document.getElementById('new-users-week').textContent = data.newUsersThisWeek;
+    document.getElementById('active-today').textContent = data.activeToday;
+    document.getElementById('active-week').textContent = data.activeThisWeek;
+}
+
+// Load Users List
+async function loadUsersList(page = 1, search = '', sort = currentSortAnalytics) {
+    try {
+        const [sortBy, order] = sort.split('-');
+        const response = await fetch(
+            `${ANALYTICS_API_URL}/users?page=${page}&limit=20&sortBy=${sortBy}&order=${order}&search=${encodeURIComponent(search)}`
+        );
+        const data = await response.json();
+        
+        if (data.success) {
+            renderUsersTable(data.data.users);
+            renderPagination(data.data.pagination);
+            document.getElementById('users-count-display').textContent = 
+                `${data.data.pagination.totalUsers} user${data.data.pagination.totalUsers !== 1 ? 's' : ''}`;
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        showNotification('Failed to load users list', 'error');
+    }
+}
+
+function renderUsersTable(users) {
+    const tbody = document.getElementById('users-table-body');
+    
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr class="empty-state"><td colspan="5">No users found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = users.map(user => {
+        const registeredDate = new Date(user.createdAt);
+        const lastLoginDate = new Date(user.lastLogin);
+        const now = new Date();
+        const daysSinceLogin = Math.floor((now - lastLoginDate) / (1000 * 60 * 60 * 24));
+        
+        let loginBadgeClass = 'time-badge';
+        if (daysSinceLogin === 0) loginBadgeClass += ' recent';
+        else if (daysSinceLogin > 7) loginBadgeClass += ' old';
+        
+        // Optimize Google profile images - use smaller size
+        const optimizedPicture = user.picture ? 
+            user.picture.replace('=s96-c', '=s48-c').replace('s96-c', 's48-c') : 
+            '../../assets/images/my_logo.png';
+        
+        return `
+            <tr>
+                <td style="text-align: center;">
+                    <img src="${optimizedPicture}" 
+                         alt="${escapeHtml(user.name)}" 
+                         class="user-profile-img"
+                         loading="lazy"
+                         onerror="this.src='../../assets/images/my_logo.png'">
+                </td>
+                <td><strong>${escapeHtml(user.name)}</strong></td>
+                <td><span class="user-email-badge">${escapeHtml(user.email)}</span></td>
+                <td>${registeredDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                <td><span class="${loginBadgeClass}">${formatTimeSince(lastLoginDate)}</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderPagination(pagination) {
+    const container = document.getElementById('user-pagination');
+    
+    container.innerHTML = `
+        <button onclick="changePage(${pagination.currentPage - 1})" 
+                ${pagination.currentPage === 1 ? 'disabled' : ''}>
+            <i class="fas fa-chevron-left"></i> Previous
+        </button>
+        <span class="page-info">
+            Page ${pagination.currentPage} of ${pagination.totalPages}
+        </span>
+        <button onclick="changePage(${pagination.currentPage + 1})" 
+                ${pagination.currentPage === pagination.totalPages ? 'disabled' : ''}>
+            Next <i class="fas fa-chevron-right"></i>
+        </button>
+    `;
+    
+    currentPageAnalytics = pagination.currentPage;
+}
+
+function changePage(page) {
+    if (page < 1) return;
+    const searchValue = document.getElementById('user-search-input').value;
+    loadUsersList(page, searchValue, currentSortAnalytics);
+}
+
+function formatTimeSince(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}

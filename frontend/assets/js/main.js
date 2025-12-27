@@ -11,6 +11,68 @@
     let chaptersCache = null;
     let cacheTimestamp = null;
     
+    // --- MOBILE MENU ---
+    function initializeMobileMenu() {
+        const toggle = document.querySelector('.mobile-menu-toggle');
+        const nav = document.querySelector('header nav');
+        
+        if (!toggle || !nav) return;
+        
+        // Create overlay
+        let overlay = document.querySelector('.mobile-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'mobile-overlay';
+            document.body.appendChild(overlay);
+        }
+        
+        // Toggle menu
+        toggle.addEventListener('click', () => {
+            toggle.classList.toggle('active');
+            nav.classList.toggle('active');
+            overlay.classList.toggle('active');
+            document.body.style.overflow = nav.classList.contains('active') ? 'hidden' : '';
+        });
+        
+        // Close menu when clicking overlay
+        overlay.addEventListener('click', () => {
+            toggle.classList.remove('active');
+            nav.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        });
+        
+        // Close menu when clicking a link
+        nav.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                toggle.classList.remove('active');
+                nav.classList.remove('active');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+        });
+        
+        // Close menu on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && nav.classList.contains('active')) {
+                toggle.classList.remove('active');
+                nav.classList.remove('active');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+        
+        // Close menu on window resize (if going to desktop)
+        window.addEventListener('resize', debounce(() => {
+            if (window.innerWidth > 768 && nav.classList.contains('active')) {
+                toggle.classList.remove('active');
+                nav.classList.remove('active');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }, 100));
+    }
+    
     // --- UTILITY FUNCTIONS ---
     const debounce = (func, delay) => {
         let timeoutId;
@@ -31,7 +93,7 @@
     const showLoading = (container) => {
         container.innerHTML = '<div class="loading" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i><p>Loading chapters...</p></div>';
     };
-    
+
     // --- ACCORDION LOGIC ---
     function initializeAccordion() {
         const accordionHeaders = document.querySelectorAll(".accordion-header");
@@ -83,7 +145,22 @@
                 return;
             }
             
-            const response = await fetch(`${CONFIG.API_URL}?classNumber=${classNum}`);
+            const response = await fetch(`${CONFIG.API_URL}?classNumber=${classNum}`, {
+                credentials: 'include'
+            });
+            
+            if (response.status === 401) {
+                // User is not authenticated
+                accordionContainer.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; background: linear-gradient(135deg, #e03669 0%, #3d5a80 100%); border-radius: 12px; color: white; margin: 40px 0;">
+                        <i class="fas fa-lock" style="font-size: 64px; margin-bottom: 20px; opacity: 0.9;"></i>
+                        <h2 style="margin-bottom: 15px; font-size: 28px;">Login Required</h2>
+                        <p style="margin-bottom: 30px; font-size: 18px; opacity: 0.95;">Please login with your BMSCE email (@bmsce.ac.in) to access the course materials.</p>
+                        <a href="login.html" style="display: inline-block; padding: 15px 40px; background: white; color: #e03669; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; transition: transform 0.2s;">Login Now</a>
+                    </div>
+                `;
+                return;
+            }
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -225,12 +302,16 @@
         }
     }
     
-    // Load syllabus link on page load - use setTimeout to ensure DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', loadSyllabusLink);
-    } else {
-        // DOM is already loaded
+    // Initialize everything on page load
+    function init() {
+        initializeMobileMenu();
         loadSyllabusLink();
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
     
 })();

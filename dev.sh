@@ -36,8 +36,19 @@ FRONTEND_URL=http://localhost:8000
 NODE_ENV=development
 ADMIN_USERNAME=teacher
 ADMIN_PASSWORD=pass123
+
+# Google OAuth Configuration (REQUIRED for authentication)
+# Get these from https://console.cloud.google.com/
+GOOGLE_CLIENT_ID=your_google_client_id_here
+GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
+
+# Session Secret (Change in production)
+SESSION_SECRET=your-secret-key-change-this-in-production
 EOF
     echo -e "${GREEN}      ✓ .env file created${NC}"
+    echo -e "${YELLOW}      ⚠️  IMPORTANT: Configure Google OAuth credentials in server/.env${NC}"
+    echo -e "${YELLOW}      See docs/GOOGLE_OAUTH_SETUP.md for instructions${NC}"
 fi
 echo ""
 
@@ -96,16 +107,23 @@ echo -e "${GREEN}╚════════════════════
 echo ""
 
 echo -e "${BLUE}📍 QUICK LINKS:${NC}"
-echo -e "   🌐 Frontend:  ${GREEN}http://localhost:8000${NC}"
-echo -e "   🔐 Admin:     ${GREEN}http://localhost:8000/frontend/components/admin/admin.html${NC}"
+echo -e "   � Home:      ${GREEN}http://localhost:8000/frontend/pages/index.html${NC}"
+echo -e "   🔐 Login:     ${GREEN}http://localhost:8000/frontend/pages/login.html${NC}"
+echo -e "   👨‍💼 Admin:     ${GREEN}http://localhost:8000/frontend/components/admin/admin.html${NC}"
 echo -e "   📡 API:       ${GREEN}http://localhost:3000${NC}"
 echo -e "   📚 Chapters:  ${GREEN}http://localhost:3000/api/chapters${NC}"
 echo -e "   📄 Syllabus:  ${GREEN}http://localhost:3000/api/syllabus${NC}"
 echo ""
 
-echo -e "${BLUE}🔑 ADMIN CREDENTIALS:${NC}"
-echo -e "   Username: ${GREEN}teacher${NC}"
-echo -e "   Password: ${GREEN}pass123${NC}"
+echo -e "${BLUE}🔑 AUTHENTICATION:${NC}"
+echo -e "   Student Login: ${GREEN}Google OAuth (@bmsce.ac.in only)${NC}"
+echo -e "   Admin Login:   ${GREEN}teacher / pass123${NC}"
+echo ""
+
+echo -e "${BLUE}📖 DOCUMENTATION:${NC}"
+echo -e "   Quick Start:   ${GREEN}QUICK_START_AUTH.md${NC}"
+echo -e "   OAuth Setup:   ${GREEN}docs/GOOGLE_OAUTH_SETUP.md${NC}"
+echo -e "   Demo Guide:    ${GREEN}TEACHER_DEMO_GUIDE.md${NC}"
 echo ""
 
 echo -e "${YELLOW}📝 Press Ctrl+C to stop all servers${NC}"

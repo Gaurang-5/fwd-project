@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="BMSCE Admin Portal - Manage chapters, syllabus, and view analytics.">
     <title>Admin Portal | BMSCE</title>
+    
+    <!-- Preload critical assets -->
+    <link rel="preload" href="../../assets/css/style.css" as="style">
+    
+    <!-- DNS prefetch -->
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="../../assets/css/style.css">
@@ -18,9 +27,12 @@
     <header>
         <div class="container">
             <a href="../../pages/index.html" class="logo">
-                <img src="../../assets/images/my_logo.png" alt="Your Logo" class="header-logo">
+                <img src="../../assets/images/my_logo.png" alt="Your Logo" class="header-logo" loading="lazy">
                 <span class="logo-text">| BMSCE</span>
             </a>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span class="hamburger"></span>
+            </button>
             <nav>
                 <ul>
                     <li><a href="../../pages/index.html" class="active">Home</a></li>
@@ -36,6 +48,9 @@
 
     <div id="password-prompt" class="futuristic-login-container">
         <div class="futuristic-login-card">
+            <div class="admin-logo-container">
+                <img src="../../assets/images/my_logo.png" alt="BMSCE Logo" class="admin-logo-img">
+            </div>
             <h1>Admin Portal</h1>
             <div class="form-group">
                 <label for="username">Username</label>
@@ -50,6 +65,21 @@
     </div>
 
     <div id="main-content">
+        <!-- Tab Navigation -->
+        <div class="admin-tabs">
+            <button class="tab-btn active" data-tab="chapters">
+                <i class="fas fa-book"></i> Chapter Management
+            </button>
+            <button class="tab-btn" data-tab="analytics">
+                <i class="fas fa-chart-line"></i> Analytics & Users
+            </button>
+            <button id="logout-btn" class="admin-btn logout-btn" style="margin-left: auto;">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+
+        <!-- Chapters Tab Content -->
+        <div id="chapters-tab" class="tab-content active">
         <div class="admin-container">
             <div class="admin-header">
                 <div class="admin-header-left">
@@ -169,6 +199,99 @@
                 <div id="units-container-9" class="units-container"></div>
             </div>
         </div>
+        </div>
+        
+        <!-- Analytics Tab Content -->
+        <div id="analytics-tab" class="tab-content">
+            <div class="admin-container">
+                <div class="admin-header">
+                    <div class="admin-header-left">
+                        <h1><i class="fas fa-chart-line"></i> Analytics & User Management</h1>
+                        <p class="admin-subtitle">Monitor user activity and platform statistics</p>
+                    </div>
+                    <button id="refresh-analytics-btn" class="admin-btn">
+                        <i class="fas fa-sync"></i> Refresh Data
+                    </button>
+                </div>
+
+                <!-- Analytics Stats Cards -->
+                <div class="admin-stats">
+                    <div class="stat-card">
+                        <i class="fas fa-users"></i>
+                        <div class="stat-info">
+                            <h3 id="total-users-count">0</h3>
+                            <p>Total Users</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-user-plus"></i>
+                        <div class="stat-info">
+                            <h3 id="new-users-week">0</h3>
+                            <p>New This Week</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-user-check"></i>
+                        <div class="stat-info">
+                            <h3 id="active-today">0</h3>
+                            <p>Active Today</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-chart-bar"></i>
+                        <div class="stat-info">
+                            <h3 id="active-week">0</h3>
+                            <p>Active This Week</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Search and Filter -->
+                <div class="admin-controls">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="user-search-input" placeholder="Search users by name or email...">
+                    </div>
+                    <div class="filter-box">
+                        <select id="user-sort-filter">
+                            <option value="lastLogin-desc">Last Login (Newest)</option>
+                            <option value="lastLogin-asc">Last Login (Oldest)</option>
+                            <option value="createdAt-desc">Registration (Newest)</option>
+                            <option value="createdAt-asc">Registration (Oldest)</option>
+                            <option value="name-asc">Name (A-Z)</option>
+                            <option value="name-desc">Name (Z-A)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Users Table -->
+                <div class="class-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-users"></i> Registered Users</h2>
+                        <span class="chapter-count" id="users-count-display">0 users</span>
+                    </div>
+                    <div class="table-container">
+                        <table class="chapters-table">
+                            <thead>
+                                <tr>
+                                    <th>Profile</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Registered</th>
+                                    <th>Last Login</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <tr class="empty-state">
+                                    <td colspan="5">Loading users...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="user-pagination" class="pagination-controls"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="chapter-modal">
@@ -202,9 +325,9 @@
 
     <div id="notification" class="notification"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
-    <script src="../../assets/js/particles-app.js"></script> 
-    <script src="admin-enhanced.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js" defer></script>
+    <script src="../../assets/js/particles-app.js" defer></script> 
+    <script src="admin-enhanced.js" defer></script>
 
     
 
